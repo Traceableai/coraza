@@ -5,6 +5,7 @@ package corazawaf
 
 import (
 	"fmt"
+	"hash/crc32"
 	"regexp"
 	"strings"
 	"sync"
@@ -585,18 +586,24 @@ func (r *Rule) AddVariableNegation(v variables.RuleVariable, key string) error {
 	return nil
 }
 
-var transformationIDToName = []string{""}
-var transformationNameToID = sync.Map{} // map[string]int
+var (
+	transformationNameToID = sync.Map{} // Thread-safe map for map[string]int
+	transformationIDToName = sync.Map{} // Thread-safe map for ID-to-name
+)
 
 func transformationID(currentID int, transformationName string) int {
-	currName := transformationIDToName[currentID]
+	currName, _ := transformationIDToName.Load(currentID)
+	if currName == nil {
+		currName = ""
+	}
+
 	nextName := fmt.Sprintf("%s+%s", currName, transformationName)
-	id, _ := transformationNameToID.LoadOrStore(nextName, func() interface{} {
-		txid := len(transformationIDToName)
-		transformationIDToName = append(transformationIDToName, nextName)
-		return txid
+	actual, _ := transformationNameToID.LoadOrStore(nextName, func() interface{} {
+		crcID := int(crc32.ChecksumIEEE([]byte(nextName)))
+		transformationIDToName.Store(crcID, nextName)
+		return crcID
 	}())
-	return id.(int)
+	return actual.(int)
 }
 
 // AddTransformation adds a transformation to the rule
