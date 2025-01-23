@@ -733,4 +733,8 @@ func TestGetTransformationID(t *testing.T) {
 			assert.NotEqual(t, id, 0)
 		}
 	}
+
+	id1 := transformationID(0, "none")
+	id2 := transformationID(0, "none")
+	assert.Equal(t, id1, id2, "Expected same ids for same transformation %d %d", id1, id2)
 }
