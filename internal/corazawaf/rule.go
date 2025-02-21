@@ -4,10 +4,10 @@
 package corazawaf
 
 import (
+	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"regexp"
-	"strconv"
 	"strings"
 	"unsafe"
 
@@ -587,11 +587,12 @@ func (r *Rule) AddVariableNegation(v variables.RuleVariable, key string) error {
 }
 
 func transformationID(currentID int, transformationName string) int {
-	nextName := strconv.Itoa(currentID) + "+" + transformationName
 	hasher := fnv.New64a()
-	hasher.Write([]byte(nextName))
-	id := int(hasher.Sum64())
-	return id
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], uint64(currentID))
+	hasher.Write(buf[:])
+	hasher.Write([]byte(transformationName))
+	return int(hasher.Sum64())
 }
 
 // AddTransformation adds a transformation to the rule
